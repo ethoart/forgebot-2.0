@@ -1,5 +1,9 @@
 version: "3.8"
 
+networks:
+  app_net:
+    driver: bridge
+
 services:
   # PYTHON BACKEND (FastAPI)
   backend:
@@ -15,6 +19,8 @@ services:
       - waha
     ports:
       - "8000:8000"
+    networks:
+      - app_net
 
   # FRONTEND & PROXY (Nginx)
   nginx:
@@ -27,6 +33,8 @@ services:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - app_net
 
   # WHATSAPP API
   waha:
@@ -45,6 +53,8 @@ services:
       - ./waha_data:/app/.waha
     ports:
       - "3000:3000"
+    networks:
+      - app_net
 
   # DATABASE
   mongo:
@@ -59,8 +69,10 @@ services:
       - "27017:27017"
     volumes:
       - ./mongo_data:/data/db
+    networks:
+      - app_net
 
-  # TUNNEL (Optional, for public access)
+  # TUNNEL
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: always
@@ -68,3 +80,5 @@ services:
     command: tunnel run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    networks:
+      - app_net
