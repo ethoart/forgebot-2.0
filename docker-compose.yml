@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  # PYTHON BACKEND (FastAPI)
+  backend:
+    build: ./backend
+    restart: always
+    container_name: backend
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - WAHA_API_URL=http://waha:3000
+      - WAHA_API_KEY=secret123
+    depends_on:
+      - mongo
+      - waha
+    ports:
+      - "8000:8000"
+
+  # FRONTEND & PROXY (Nginx)
+  nginx:
+    build: 
+      context: .
+      dockerfile: Dockerfile.txt
+    restart: always
+    container_name: nginx_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # WHATSAPP API
+  waha:
+    image: devlikeapro/waha:latest
+    restart: always
+    container_name: waha
+    environment:
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WAHA_PRINT_QR=true
+      - WAHA_NO_FILES=true
+      - WAHA_WORKER_ID=default
+      - WAHA_DASHBOARD_USERNAME=admin
+      - WAHA_DASHBOARD_PASSWORD=secret123
+      - WAHA_API_KEY=secret123
+    volumes:
+      - ./waha_data:/app/.waha
+    ports:
+      - "3000:3000"
+
+  # DATABASE
+  mongo:
+    image: mongo:6.0
+    restart: always
+    container_name: mongo
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db
+
+  # TUNNEL (Optional, for public access)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    container_name: cloudflared
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
